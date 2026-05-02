@@ -1,6 +1,6 @@
-# Dante Audio Bridge with Inferno and Squeezelite for Debian on Proxmox.
+# Dante Audio Bridge with Inferno and Squeezelite for Debian on Proxmox
 
-A working Debian-based setup for creating Dante audio transmitters from a Proxmox LXC container or Debian install using [`inferno`](https://github.com/teodly/inferno) and `squeezelite`.
+A working Debian-based setup for creating Dante audio transmitters from a Proxmox LXC container, VM, or normal Debian install using [`inferno`](https://github.com/teodly/inferno), `statime`, and `squeezelite`.
 
 This project is intended for homelab and whole-home audio setups where you want software-based audio players to appear as Dante transmitters on the network.
 
@@ -9,15 +9,13 @@ This project is intended for homelab and whole-home audio setups where you want 
 This setup creates one or more virtual audio zones, for example:
 
 * `Bathroom`
-* `Dining room`
+* `Diningroom`
 * `Kitchen`
-* `Guest room`
+* `Guestroom`
 
 Each zone runs its own `squeezelite` instance. Audio from `squeezelite` is sent to an ALSA device named `inferno`, which is then transmitted onto the Dante network using Inferno.
 
 The Dante transmitters can then be routed in Dante Controller to a DSP, amplifier, or other Dante receiver.
-
-
 
 Example target setup:
 
@@ -35,13 +33,44 @@ Dante Controller routing
 DSP / amplifier / speaker zone
 ```
 
-## 🚀 Quick Install
+## Recommended repository layout
+
+Recommended GitHub repository structure:
+
+```text
+dante-squeezelite-bridge/
+├── README.md
+├── LICENSE
+├── install.sh
+├── config/
+│   └── asoundrc.example
+└── services/
+    └── squeezelite.service.example
+```
+
+Recommended extra files:
+
+```text
+.gitignore
+```
+
+Example `.gitignore`:
+
+```gitignore
+target/
+*.log
+*.tmp
+```
+
+## Quick install
 
 ```bash
 wget https://raw.githubusercontent.com/YOURUSER/dante-squeezelite-bridge/main/install.sh
 chmod +x install.sh
 sudo ./install.sh
 ```
+
+Replace `YOURUSER` with your GitHub username.
 
 ## Tested environment
 
@@ -50,6 +79,7 @@ This was tested with:
 * Proxmox VE
 * Debian 12 container / install
 * Inferno from: [https://github.com/teodly/inferno](https://github.com/teodly/inferno)
+* Statime from: [https://github.com/teodly/statime](https://github.com/teodly/statime)
 * Squeezelite
 * Dante Controller
 * Bose EX-1280 DSP / Dante receiver
@@ -57,23 +87,15 @@ This was tested with:
 
 ## Requirements
 
-### System packages
+Recommended:
 
-Install the basic build and audio requirements:
+* Debian 12
+* Root access
+* Wired network connection
+* Dante Controller on the same reachable network
+* Proxmox LXC, VM, or bare-metal Debian install
 
-```bash
-apt update
-apt install -y \
-  git \
-  build-essential \
-  cmake \
-  pkg-config \
-  alsa-utils \
-  libasound2-dev \
-  squeezelite
-```
-
-Depending on your Debian install, Inferno may require additional Rust/build dependencies. Install them as needed according to the Inferno repository.
+The installer will install the required Debian packages automatically.
 
 ## Network requirements
 
@@ -89,9 +111,9 @@ Recommended:
 
 If running inside Proxmox, make sure the container or VM has direct access to the correct network bridge/VLAN.
 
-## One-command installer
+## Installer
 
-The recommended way is to use the installer script below as `install.sh`.
+The recommended way is to use the included `install.sh` script.
 
 It installs:
 
@@ -103,13 +125,11 @@ It installs:
 * A zone-specific systemd service
 * Real-time audio permissions
 
-Create the file:
+Create or upload this file as:
 
-```bash
-nano install.sh
+```text
+install.sh
 ```
-
-Paste:
 
 ```bash
 #!/bin/bash
@@ -347,61 +367,75 @@ Make it executable and run it:
 
 ```bash
 chmod +x install.sh
-./install.sh
+sudo ./install.sh
 ```
 
-## ALSA configuration
+## Example ALSA configuration
 
-Create or edit the ALSA configuration for the zone.
+The installer automatically writes this to `/root/.asoundrc`.
 
 Example for a zone named `Bathroom`:
 
-```bash
-nano /root/.asoundrc
-```
-
-Example `.asoundrc`:
-
 ```conf
 pcm.inferno {
-    type plug
-    slave {
-        pcm "bathroom"
-        format S32_LE
-        rate 48000
-        channels 2
-    }
+    type inferno
+    device "Bathroom"
+    format S32_LE
+    rate 48000
+    channels 2
 }
 
 ctl.inferno {
-    type hw
-    card 0
+    type inferno
+}
+```
+
+You can also include this as:
+
+```text
+config/asoundrc.example
+```
+
+Use:
+
+```conf
+pcm.inferno {
+    type inferno
+    device "ZONE_NAME"
+    format S32_LE
+    rate 48000
+    channels 2
+}
+
+ctl.inferno {
+    type inferno
 }
 ```
 
 The important part is that `squeezelite` outputs to the ALSA device named `inferno`.
 
-## Squeezelite service
+## Example Squeezelite service
 
-Create a dedicated systemd service for each zone.
+The installer automatically creates a zone-specific systemd service such as:
 
-Example:
-
-```bash
-nano /etc/systemd/system/squeezelite-bathroom.service
+```text
+/etc/systemd/system/squeezelite-bathroom.service
 ```
+
+Example service file:
 
 ```ini
 [Unit]
 Description=Squeezelite Dante Player - Bathroom
-After=network-online.target sound.target
+After=statime.service network-online.target
 Wants=network-online.target
+Requires=statime.service
 
 [Service]
 Type=simple
 Environment=INFERNO_NAME=Bathroom
 ExecStart=/usr/bin/squeezelite \
-  -n Baderom \
+  -n Bathroom \
   -o inferno \
   -r 48000 \
   -b 4096:1024 \
@@ -410,17 +444,16 @@ ExecStart=/usr/bin/squeezelite \
   -m 00:11:22:33:44:b1
 Restart=always
 RestartSec=3
+User=root
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Enable and start it:
+You can also include this as:
 
-```bash
-systemctl daemon-reload
-systemctl enable --now squeezelite-bathroom.service
-systemctl status squeezelite-bathroom.service
+```text
+services/squeezelite.service.example
 ```
 
 ## Important Squeezelite options
@@ -452,10 +485,10 @@ Each zone must have a unique MAC address when using `-m`.
 Example MAC scheme:
 
 ```text
-Baderom    00:11:22:33:44:b1
-Kjokken    00:11:22:33:44:b2
-Spisestue  00:11:22:33:44:b3
-Gjesterom  00:11:22:33:44:b4
+Bathroom    00:11:22:33:44:b1
+Kitchen     00:11:22:33:44:b2
+Diningroom  00:11:22:33:44:b3
+Guestroom   00:11:22:33:44:b4
 ```
 
 ## Multiple zones
@@ -473,9 +506,11 @@ Example service names:
 ```text
 squeezelite-bathroom.service
 squeezelite-kitchen.service
-squeezelite-livingroom.service
+squeezelite-diningroom.service
 squeezelite-guestroom.service
 ```
+
+Current limitation: the installer creates one zone per run and writes `/root/.asoundrc` for that zone. For multiple simultaneous zones on the same host, you may need to extend the configuration or run separate containers/VMs per zone.
 
 ## Dante Controller
 
@@ -483,7 +518,7 @@ After starting the services:
 
 1. Open Dante Controller.
 2. Wait for the transmitters to appear.
-3. Look for the names defined by `INFERNO_NAME`, for example `Bathroom`.
+3. Look for the name defined by `INFERNO_NAME`, for example `Bathroom`.
 4. Route the transmitter channels to your receiver/DSP/amplifier.
 5. Confirm clocking and sample rate are correct.
 
@@ -494,7 +529,9 @@ After starting the services:
 Check:
 
 ```bash
+systemctl status statime.service
 systemctl status squeezelite-bathroom.service
+journalctl -u statime.service -f
 journalctl -u squeezelite-bathroom.service -f
 ```
 
@@ -503,7 +540,7 @@ Also verify:
 * The container/VM is on the correct VLAN.
 * Multicast is allowed.
 * Dante Controller is on the same reachable network.
-* The Inferno binary exists and is executable.
+* The Inferno ALSA plugin exists in `/usr/lib/x86_64-linux-gnu/alsa-lib/`.
 * The zone name is valid.
 
 ### Squeezelite starts but no audio
@@ -547,59 +584,25 @@ Make sure every Squeezelite instance has a unique MAC address:
 
 Do not reuse the same MAC address across multiple zones.
 
-## Example complete zone: Baderom
+### Statime uses the wrong network interface
 
-`.asoundrc`:
-
-```conf
-pcm.inferno {
-    type plug
-    slave {
-        pcm "bathroom"
-        format S32_LE
-        rate 48000
-        channels 2
-    }
-}
-
-ctl.inferno {
-    type hw
-    card 0
-}
-```
-
-Systemd service:
-
-```ini
-[Unit]
-Description=Squeezelite Dante Player - Bathroom
-After=network-online.target sound.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-Environment=INFERNO_NAME=Bathroom
-ExecStart=/usr/bin/squeezelite \
-  -n Baderom \
-  -o inferno \
-  -r 48000 \
-  -b 4096:1024 \
-  -u h:48000 \
-  -a 256:4::0 \
-  -m 00:11:22:33:44:b1
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Commands:
+Check the detected interface:
 
 ```bash
-systemctl daemon-reload
-systemctl enable --now squeezelite-bathroom.service
-journalctl -u squeezelite-bathroom.service -f
+ip -o -4 route show to default
+```
+
+Then check the Statime config:
+
+```bash
+grep interface /opt/statime/inferno-ptpv1.toml
+```
+
+If needed, edit it manually:
+
+```bash
+nano /opt/statime/inferno-ptpv1.toml
+systemctl restart statime.service
 ```
 
 ## Notes
