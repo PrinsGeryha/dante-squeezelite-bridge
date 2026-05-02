@@ -72,6 +72,31 @@ sudo ./install.sh
 
 Replace `YOURUSER` with your GitHub username.
 
+## Music Assistant integration
+
+This setup is designed to work very well with the entity["software","Music Assistant","home automation audio platform"].
+
+Each Squeezelite instance appears as a player in Music Assistant.
+
+Recommended settings in Music Assistant:
+
+* Output format: **WAV**
+* Sample rate: **48 kHz**
+
+This matches the Dante environment and avoids unnecessary resampling.
+
+Typical flow:
+
+```text
+Music Assistant
+        ↓
+Squeezelite player (one per zone)
+        ↓
+Inferno (ALSA)
+        ↓
+Dante network
+```
+
 ## Tested environment
 
 This was tested with:
@@ -125,9 +150,9 @@ It installs:
 * A zone-specific systemd service
 * Real-time audio permissions
 
-Create or upload this file as:
+Install script (`install.sh`):
 
-```text
+```bashtext
 install.sh
 ```
 
@@ -390,11 +415,10 @@ ctl.inferno {
 }
 ```
 
-You can also include this as:
-
-```text
+text
 config/asoundrc.example
-```
+
+````
 
 Use:
 
@@ -410,7 +434,7 @@ pcm.inferno {
 ctl.inferno {
     type inferno
 }
-```
+````
 
 The important part is that `squeezelite` outputs to the ALSA device named `inferno`.
 
@@ -450,11 +474,10 @@ User=root
 WantedBy=multi-user.target
 ```
 
-You can also include this as:
-
-```text
+text
 services/squeezelite.service.example
-```
+
+````
 
 ## Important Squeezelite options
 
@@ -466,7 +489,7 @@ The working example uses:
 -b 4096:1024
 -u h:48000
 -a 256:4::0
-```
+````
 
 Explanation:
 
