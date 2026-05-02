@@ -33,35 +33,6 @@ Dante Controller routing
 DSP / amplifier / speaker zone
 ```
 
-## Recommended repository layout
-
-Recommended GitHub repository structure:
-
-```text
-dante-squeezelite-bridge/
-├── README.md
-├── LICENSE
-├── install.sh
-├── config/
-│   └── asoundrc.example
-└── services/
-    └── squeezelite.service.example
-```
-
-Recommended extra files:
-
-```text
-.gitignore
-```
-
-Example `.gitignore`:
-
-```gitignore
-target/
-*.log
-*.tmp
-```
-
 ## Quick install
 
 ```bash
@@ -69,8 +40,6 @@ wget https://raw.githubusercontent.com/YOURUSER/dante-squeezelite-bridge/main/in
 chmod +x install.sh
 sudo ./install.sh
 ```
-
-Replace `YOURUSER` with your GitHub username.
 
 ## Music Assistant integration
 
