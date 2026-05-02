@@ -17,6 +17,8 @@ Each zone runs its own `squeezelite` instance. Audio from `squeezelite` is sent 
 
 The Dante transmitters can then be routed in Dante Controller to a DSP, amplifier, or other Dante receiver.
 
+
+
 Example target setup:
 
 ```text
@@ -32,6 +34,13 @@ Dante Controller routing
         ↓
 DSP / amplifier / speaker zone
 ```
+
+## 🚀 Quick Install
+
+```bash
+wget https://raw.githubusercontent.com/YOURUSER/dante-squeezelite-bridge/main/install.sh
+chmod +x install.sh
+sudo ./install.sh
 
 ## Tested environment
 
