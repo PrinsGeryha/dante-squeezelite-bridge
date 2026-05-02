@@ -1,0 +1,23 @@
+[Unit]
+Description=Squeezelite Dante Player - ZONE
+After=statime.service network-online.target
+Wants=network-online.target
+Requires=statime.service
+
+[Service]
+Type=simple
+Environment=INFERNO_NAME=ZONE
+ExecStart=/usr/bin/squeezelite \
+  -n ZONE \
+  -o inferno \
+  -r 48000 \
+  -b 4096:1024 \
+  -u h:48000 \
+  -a 256:4::0 \
+  -m 00:11:22:33:44:aa
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
