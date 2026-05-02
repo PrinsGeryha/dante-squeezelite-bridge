@@ -1,6 +1,6 @@
 # Dante Audio Bridge with Inferno and Squeezelite for Debian on Proxmox
 
-A working Debian-based setup for creating Dante audio transmitters from a Proxmox LXC container, VM, or normal Debian install using [`inferno`](https://github.com/teodly/inferno), `statime`, and `squeezelite`.
+A working Debian-based setup for creating Dante audio transmitters from a Proxmox LXC container, VM, or normal Debian install using [`inferno`](https://github.com/teodly/inferno), [`statime`](https://github.com/pendulum-project/statime), and [`squeezelite`](https://github.com/ralph-irving/squeezelite).
 
 This project is intended for homelab and whole-home audio setups where you want software-based audio players to appear as Dante transmitters on the network.
 
