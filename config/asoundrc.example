@@ -1,0 +1,11 @@
+pcm.inferno {
+    type inferno
+    device "ZONE_NAME"
+    format S32_LE
+    rate 48000
+    channels 2
+}
+
+ctl.inferno {
+    type inferno
+}
