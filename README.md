@@ -41,6 +41,7 @@ DSP / amplifier / speaker zone
 wget https://raw.githubusercontent.com/YOURUSER/dante-squeezelite-bridge/main/install.sh
 chmod +x install.sh
 sudo ./install.sh
+```
 
 ## Tested environment
 
