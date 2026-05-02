@@ -8,10 +8,10 @@ This project is intended for homelab and whole-home audio setups where you want 
 
 This setup creates one or more virtual audio zones, for example:
 
-* `Baderom`
-* `Spisestue`
-* `Kjokken`
-* `Gjesterom`
+* `Bathroom`
+* `Dining room`
+* `Kitchen`
+* `Guest room`
 
 Each zone runs its own `squeezelite` instance. Audio from `squeezelite` is sent to an ALSA device named `inferno`, which is then transmitted onto the Dante network using Inferno.
 
@@ -344,7 +344,7 @@ chmod +x install.sh
 
 Create or edit the ALSA configuration for the zone.
 
-Example for a zone named `Baderom`:
+Example for a zone named `Bathroom`:
 
 ```bash
 nano /root/.asoundrc
@@ -356,7 +356,7 @@ Example `.asoundrc`:
 pcm.inferno {
     type plug
     slave {
-        pcm "baderom"
+        pcm "bathroom"
         format S32_LE
         rate 48000
         channels 2
@@ -378,18 +378,18 @@ Create a dedicated systemd service for each zone.
 Example:
 
 ```bash
-nano /etc/systemd/system/squeezelite-baderom.service
+nano /etc/systemd/system/squeezelite-bathroom.service
 ```
 
 ```ini
 [Unit]
-Description=Squeezelite Dante Player - Baderom
+Description=Squeezelite Dante Player - Bathroom
 After=network-online.target sound.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-Environment=INFERNO_NAME=Baderom
+Environment=INFERNO_NAME=Bathroom
 ExecStart=/usr/bin/squeezelite \
   -n Baderom \
   -o inferno \
@@ -409,8 +409,8 @@ Enable and start it:
 
 ```bash
 systemctl daemon-reload
-systemctl enable --now squeezelite-baderom.service
-systemctl status squeezelite-baderom.service
+systemctl enable --now squeezelite-bathroom.service
+systemctl status squeezelite-bathroom.service
 ```
 
 ## Important Squeezelite options
@@ -461,10 +461,10 @@ For multiple zones, create one service per zone and give each one:
 Example service names:
 
 ```text
-squeezelite-baderom.service
-squeezelite-kjokken.service
-squeezelite-spisestue.service
-squeezelite-gjesterom.service
+squeezelite-bathroom.service
+squeezelite-kitchen.service
+squeezelite-livingroom.service
+squeezelite-guestroom.service
 ```
 
 ## Dante Controller
@@ -473,7 +473,7 @@ After starting the services:
 
 1. Open Dante Controller.
 2. Wait for the transmitters to appear.
-3. Look for the names defined by `INFERNO_NAME`, for example `Baderom`.
+3. Look for the names defined by `INFERNO_NAME`, for example `Bathroom`.
 4. Route the transmitter channels to your receiver/DSP/amplifier.
 5. Confirm clocking and sample rate are correct.
 
@@ -484,8 +484,8 @@ After starting the services:
 Check:
 
 ```bash
-systemctl status squeezelite-baderom.service
-journalctl -u squeezelite-baderom.service -f
+systemctl status squeezelite-bathroom.service
+journalctl -u squeezelite-bathroom.service -f
 ```
 
 Also verify:
@@ -517,14 +517,14 @@ Test Squeezelite manually:
 Make sure the service includes:
 
 ```ini
-Environment=INFERNO_NAME=Baderom
+Environment=INFERNO_NAME=Bathroom
 ```
 
 Then restart the service:
 
 ```bash
 systemctl daemon-reload
-systemctl restart squeezelite-baderom.service
+systemctl restart squeezelite-bathroom.service
 ```
 
 ### Multiple players conflict
@@ -545,7 +545,7 @@ Do not reuse the same MAC address across multiple zones.
 pcm.inferno {
     type plug
     slave {
-        pcm "baderom"
+        pcm "bathroom"
         format S32_LE
         rate 48000
         channels 2
@@ -562,13 +562,13 @@ Systemd service:
 
 ```ini
 [Unit]
-Description=Squeezelite Dante Player - Baderom
+Description=Squeezelite Dante Player - Bathroom
 After=network-online.target sound.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-Environment=INFERNO_NAME=Baderom
+Environment=INFERNO_NAME=Bathroom
 ExecStart=/usr/bin/squeezelite \
   -n Baderom \
   -o inferno \
@@ -588,8 +588,8 @@ Commands:
 
 ```bash
 systemctl daemon-reload
-systemctl enable --now squeezelite-baderom.service
-journalctl -u squeezelite-baderom.service -f
+systemctl enable --now squeezelite-bathroom.service
+journalctl -u squeezelite-bathroom.service -f
 ```
 
 ## Notes
