@@ -8,7 +8,6 @@
 set -Eeuo pipefail
 
 APP="Squeezelite-Dante-Bridge"
-NSAPP="squeezelite-dante-bridge"
 VERSION="1.0.0"
 
 DEFAULT_CTID="150"
@@ -24,7 +23,7 @@ DEFAULT_TEMPLATE="debian-12-standard_12.7-1_amd64.tar.zst"
 DEFAULT_UNPRIVILEGED="0"
 
 CTID="$DEFAULT_CTID"
-HOSTNAME="$DEFAULT_HOSTNAME"
+CT_HOSTNAME="$DEFAULT_HOSTNAME"
 ZONE_NAME="$DEFAULT_ZONE"
 SERVER_ADDRESS=""
 SQUEEZELITE_MAC=""
@@ -40,11 +39,12 @@ VERBOSE="${VERBOSE:-0}"
 ADVANCED="0"
 FORCE_RECREATE="0"
 
-YW='[33m'
-GN='[1;92m'
-RD='[01;31m'
-BL='[36m'
-CL='[m'
+YW='\033[33m'
+GN='\033[1;92m'
+RD='\033[01;31m'
+BL='\033[36m'
+CL='\033[m'
+
 CM="${GN}✔️${CL}"
 CROSS="${RD}✖️${CL}"
 INFO="${BL}💡${CL}"
@@ -58,30 +58,38 @@ OS_ICON="🖥️"
 PKG_ICON="📦"
 NET_ICON="🌐"
 
-STD=""
-if [[ "$VERBOSE" != "1" ]]; then
-  STD="&>/dev/null"
-fi
-
-function header_info() {
+header_info() {
   clear
   cat <<'EOF'
-   _____                        ___ __       ____              __     
-  / ___/____ ___  _____  ___  / (_) /____  / __ \____ _____  / /____ 
+   _____                        ___ __       ____              __
+  / ___/____ ___  _____  ___  / (_) /____  / __ \____ _____  / /____
   \__ \/ __ `/ / / / _ \/ _ \/ / / __/ _ \/ / / / __ `/ __ \/ __/ _ \
  ___/ / /_/ / /_/ /  __/  __/ / / /_/  __/ /_/ / /_/ / / / / /_/  __/
-/____/\__, /\__,_/\___/\___/_/_/\__/\___/_____/\__,_/_/ /_/\__/\___/ 
-        /_/                                                            
+/____/\__, /\__,_/\___/\___/_/_/\__/\___/_____/\__,_/_/ /_/\__/\___/
+        /_/
+
                 Squeezelite Dante Bridge
 EOF
 }
 
-function msg_info() { echo -e "${INFO} ${YW}$1${CL}"; }
-function msg_ok() { echo -e "${CM} ${GN}$1${CL}"; }
-function msg_error() { echo -e "${CROSS} ${RD}$1${CL}"; }
-function die() { msg_error "$1"; exit 1; }
+msg_info() {
+  echo -e "${INFO} ${YW}$1${CL}"
+}
 
-function run_cmd() {
+msg_ok() {
+  echo -e "${CM} ${GN}$1${CL}"
+}
+
+msg_error() {
+  echo -e "${CROSS} ${RD}$1${CL}"
+}
+
+die() {
+  msg_error "$1"
+  exit 1
+}
+
+run_cmd() {
   if [[ "$VERBOSE" == "1" ]]; then
     "$@"
   else
@@ -89,7 +97,7 @@ function run_cmd() {
   fi
 }
 
-function usage() {
+usage() {
   cat <<EOF
 $APP standalone Proxmox installer
 
@@ -100,62 +108,115 @@ Usage:
   bash proxmox-install.sh --ctid 151 --hostname kitchen --zone Kitchen
 
 Options:
-  --ctid ID              Container ID. Default: $DEFAULT_CTID
-  --hostname NAME        LXC hostname. Default: $DEFAULT_HOSTNAME
-  --zone NAME            Dante/Squeezelite/Music Assistant player name. Default: $DEFAULT_ZONE
-  --server ADDRESS       Music Assistant/LMS server IP or hostname. Blank/default = auto-discovery
-  --mac MAC              Fixed Squeezelite MAC. Blank/default = random generated
-  --storage NAME         Container storage. Default: $DEFAULT_STORAGE
-  --template-storage NAME Template storage. Default: $DEFAULT_TEMPLATE_STORAGE
-  --bridge NAME          Network bridge. Default: $DEFAULT_BRIDGE
-  --memory MB            RAM in MiB. Default: $DEFAULT_MEMORY
-  --cores N              CPU cores. Default: $DEFAULT_CORES
-  --disk GB              Disk size in GB. Default: $DEFAULT_DISK
-  --template FILE        Debian LXC template. Default: $DEFAULT_TEMPLATE
-  --unprivileged         Create unprivileged LXC
-  --force-recreate       Destroy existing CTID before creating
-  --advanced             Ask for all settings interactively
-  --verbose              Show full command output
-  -h, --help             Show help
+  --ctid ID                 Container ID. Default: $DEFAULT_CTID
+  --hostname NAME           LXC hostname. Default: $DEFAULT_HOSTNAME
+  --zone NAME               Dante/Squeezelite/Music Assistant player name. Default: $DEFAULT_ZONE
+  --server ADDRESS          Music Assistant/LMS server IP or hostname. Blank/default = auto-discovery
+  --mac MAC                 Fixed Squeezelite MAC. Blank/default = random generated
+  --storage NAME            Container storage. Default: $DEFAULT_STORAGE
+  --template-storage NAME   Template storage. Default: $DEFAULT_TEMPLATE_STORAGE
+  --bridge NAME             Network bridge. Default: $DEFAULT_BRIDGE
+  --memory MB               RAM in MiB. Default: $DEFAULT_MEMORY
+  --cores N                 CPU cores. Default: $DEFAULT_CORES
+  --disk GB                 Disk size in GB. Default: $DEFAULT_DISK
+  --template FILE           Debian LXC template. Default: $DEFAULT_TEMPLATE
+  --unprivileged            Create unprivileged LXC
+  --force-recreate          Destroy existing CTID before creating
+  --advanced                Ask for all settings interactively
+  --verbose                 Show full command output
+  -h, --help                Show help
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --ctid) CTID="${2:-}"; shift 2 ;;
-    --hostname) HOSTNAME="${2:-}"; shift 2 ;;
-    --zone) ZONE_NAME="${2:-}"; shift 2 ;;
-    --server) SERVER_ADDRESS="${2:-}"; shift 2 ;;
-    --mac) SQUEEZELITE_MAC="${2:-}"; shift 2 ;;
-    --storage) STORAGE="${2:-}"; shift 2 ;;
-    --template-storage) TEMPLATE_STORAGE="${2:-}"; shift 2 ;;
-    --bridge) BRIDGE="${2:-}"; shift 2 ;;
-    --memory) MEMORY="${2:-}"; shift 2 ;;
-    --cores) CORES="${2:-}"; shift 2 ;;
-    --disk) DISK="${2:-}"; shift 2 ;;
-    --template) TEMPLATE="${2:-}"; shift 2 ;;
-    --unprivileged) UNPRIVILEGED="1"; shift ;;
-    --force-recreate) FORCE_RECREATE="1"; shift ;;
-    --advanced) ADVANCED="1"; shift ;;
-    --verbose) VERBOSE="1"; shift ;;
-    -h|--help) usage; exit 0 ;;
-    *) die "Unknown option: $1" ;;
+    --ctid)
+      CTID="${2:-}"
+      shift 2
+      ;;
+    --hostname)
+      CT_HOSTNAME="${2:-}"
+      shift 2
+      ;;
+    --zone)
+      ZONE_NAME="${2:-}"
+      shift 2
+      ;;
+    --server)
+      SERVER_ADDRESS="${2:-}"
+      shift 2
+      ;;
+    --mac)
+      SQUEEZELITE_MAC="${2:-}"
+      shift 2
+      ;;
+    --storage)
+      STORAGE="${2:-}"
+      shift 2
+      ;;
+    --template-storage)
+      TEMPLATE_STORAGE="${2:-}"
+      shift 2
+      ;;
+    --bridge)
+      BRIDGE="${2:-}"
+      shift 2
+      ;;
+    --memory)
+      MEMORY="${2:-}"
+      shift 2
+      ;;
+    --cores)
+      CORES="${2:-}"
+      shift 2
+      ;;
+    --disk)
+      DISK="${2:-}"
+      shift 2
+      ;;
+    --template)
+      TEMPLATE="${2:-}"
+      shift 2
+      ;;
+    --unprivileged)
+      UNPRIVILEGED="1"
+      shift
+      ;;
+    --force-recreate)
+      FORCE_RECREATE="1"
+      shift
+      ;;
+    --advanced)
+      ADVANCED="1"
+      shift
+      ;;
+    --verbose)
+      VERBOSE="1"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "Unknown option: $1"
+      ;;
   esac
 done
 
-function sanitize_name() {
+sanitize_name() {
   local value="$1"
   value="${value// /}"
   echo "$value"
 }
 
-function ask_default_or_advanced() {
+ask_default_or_advanced() {
   if [[ "$ADVANCED" == "1" ]]; then
     return
   fi
 
   echo -e "${GEAR}  Using Default Settings on node $(hostname)"
-  echo -e "${INFO} PVE Version $(pveversion 2>/dev/null | awk -F'/' '{print $2}' || echo unknown) (Kernel: $(uname -r))"
+  echo -e "${INFO}  PVE Version $(pveversion 2>/dev/null | awk -F'/' '{print $2}' || echo unknown) (Kernel: $(uname -r))"
   echo -e "${ID_ICON}  Container ID: ${CTID}"
   echo -e "${OS_ICON}  Operating System: debian (12)"
   echo -e "${PKG_ICON}  Container Type: $([[ "$UNPRIVILEGED" == "1" ]] && echo "Unprivileged" || echo "Privileged")"
@@ -172,29 +233,60 @@ function ask_default_or_advanced() {
   opt="${opt:-1}"
 
   case "$opt" in
-    1) ADVANCED="0" ;;
-    2) ADVANCED="1" ;;
-    3) exit 0 ;;
-    *) die "Invalid option" ;;
+    1)
+      ADVANCED="0"
+      ;;
+    2)
+      ADVANCED="1"
+      ;;
+    3)
+      exit 0
+      ;;
+    *)
+      die "Invalid option"
+      ;;
   esac
 }
 
-function advanced_settings() {
+advanced_settings() {
   [[ "$ADVANCED" != "1" ]] && return
 
   echo ""
-  read -rp "Container ID [${CTID}]: " input; CTID="${input:-$CTID}"
-  read -rp "Hostname [${HOSTNAME}]: " input; HOSTNAME="${input:-$HOSTNAME}"
-  read -rp "Zone name [${ZONE_NAME}]: " input; ZONE_NAME="${input:-$ZONE_NAME}"
-  read -rp "Music Assistant/LMS server IP or hostname [blank = auto-discovery]: " input; SERVER_ADDRESS="${input:-$SERVER_ADDRESS}"
-  read -rp "Fixed Squeezelite MAC address [blank = random generated]: " input; SQUEEZELITE_MAC="${input:-$SQUEEZELITE_MAC}"
-  read -rp "Container storage [${STORAGE}]: " input; STORAGE="${input:-$STORAGE}"
-  read -rp "Template storage [${TEMPLATE_STORAGE}]: " input; TEMPLATE_STORAGE="${input:-$TEMPLATE_STORAGE}"
-  read -rp "Network bridge [${BRIDGE}]: " input; BRIDGE="${input:-$BRIDGE}"
-  read -rp "CPU cores [${CORES}]: " input; CORES="${input:-$CORES}"
-  read -rp "RAM in MiB [${MEMORY}]: " input; MEMORY="${input:-$MEMORY}"
-  read -rp "Disk size in GB [${DISK}]: " input; DISK="${input:-$DISK}"
-  read -rp "Debian template [${TEMPLATE}]: " input; TEMPLATE="${input:-$TEMPLATE}"
+  read -rp "Container ID [${CTID}]: " input
+  CTID="${input:-$CTID}"
+
+  read -rp "Hostname [${CT_HOSTNAME}]: " input
+  CT_HOSTNAME="${input:-$CT_HOSTNAME}"
+
+  read -rp "Zone name [${ZONE_NAME}]: " input
+  ZONE_NAME="${input:-$ZONE_NAME}"
+
+  read -rp "Music Assistant/LMS server IP or hostname [blank = auto-discovery]: " input
+  SERVER_ADDRESS="${input:-$SERVER_ADDRESS}"
+
+  read -rp "Fixed Squeezelite MAC address [blank = random generated]: " input
+  SQUEEZELITE_MAC="${input:-$SQUEEZELITE_MAC}"
+
+  read -rp "Container storage [${STORAGE}]: " input
+  STORAGE="${input:-$STORAGE}"
+
+  read -rp "Template storage [${TEMPLATE_STORAGE}]: " input
+  TEMPLATE_STORAGE="${input:-$TEMPLATE_STORAGE}"
+
+  read -rp "Network bridge [${BRIDGE}]: " input
+  BRIDGE="${input:-$BRIDGE}"
+
+  read -rp "CPU cores [${CORES}]: " input
+  CORES="${input:-$CORES}"
+
+  read -rp "RAM in MiB [${MEMORY}]: " input
+  MEMORY="${input:-$MEMORY}"
+
+  read -rp "Disk size in GB [${DISK}]: " input
+  DISK="${input:-$DISK}"
+
+  read -rp "Debian template [${TEMPLATE}]: " input
+  TEMPLATE="${input:-$TEMPLATE}"
 
   echo ""
   echo "Container type:"
@@ -202,21 +294,47 @@ function advanced_settings() {
   echo "[2] Unprivileged"
   read -rp "Select option [1/2]: " input
   input="${input:-1}"
+
   case "$input" in
-    1) UNPRIVILEGED="0" ;;
-    2) UNPRIVILEGED="1" ;;
-    *) die "Invalid container type" ;;
+    1)
+      UNPRIVILEGED="0"
+      ;;
+    2)
+      UNPRIVILEGED="1"
+      ;;
+    *)
+      die "Invalid container type"
+      ;;
   esac
 }
 
-function validate_settings() {
+app_settings() {
+  [[ "$ADVANCED" == "1" ]] && return
+
+  echo ""
+  echo -e "${GEAR}  Application Settings"
+  echo -e "${INFO}  Zone name is used for Dante, Squeezelite, and Music Assistant"
+  echo ""
+
+  read -rp "Zone name [${ZONE_NAME}]: " input
+  ZONE_NAME="${input:-$ZONE_NAME}"
+
+  read -rp "Music Assistant/LMS server IP or hostname [blank = auto-discovery]: " input
+  SERVER_ADDRESS="${input:-$SERVER_ADDRESS}"
+
+  read -rp "Fixed Squeezelite MAC address [blank = random generated]: " input
+  SQUEEZELITE_MAC="${input:-$SQUEEZELITE_MAC}"
+}
+
+validate_settings() {
   CTID="$(sanitize_name "$CTID")"
-  HOSTNAME="$(sanitize_name "$HOSTNAME")"
+  CT_HOSTNAME="$(sanitize_name "$CT_HOSTNAME")"
   ZONE_NAME="$(sanitize_name "$ZONE_NAME")"
 
   [[ -z "$CTID" ]] && die "Container ID cannot be empty"
-  [[ -z "$HOSTNAME" ]] && die "Hostname cannot be empty"
+  [[ -z "$CT_HOSTNAME" ]] && die "Hostname cannot be empty"
   [[ -z "$ZONE_NAME" ]] && die "Zone name cannot be empty"
+
   [[ ! "$CTID" =~ ^[0-9]+$ ]] && die "Container ID must be numeric"
   [[ ! "$CORES" =~ ^[0-9]+$ ]] && die "CPU cores must be numeric"
   [[ ! "$MEMORY" =~ ^[0-9]+$ ]] && die "Memory must be numeric"
@@ -228,22 +346,24 @@ function validate_settings() {
   fi
 }
 
-function validate_host() {
+validate_host() {
   [[ $EUID -ne 0 ]] && die "Run this script as root on the Proxmox host"
   command -v pct >/dev/null 2>&1 || die "pct was not found. This must run on a Proxmox host"
   command -v pveam >/dev/null 2>&1 || die "pveam was not found. This must run on a Proxmox host"
 }
 
-function download_template() {
+download_template() {
   msg_info "Checking Template"
+
   if [[ ! -f "/var/lib/vz/template/cache/${TEMPLATE}" ]]; then
     run_cmd pveam update
     run_cmd pveam download "$TEMPLATE_STORAGE" "$TEMPLATE"
   fi
+
   msg_ok "Template ${TEMPLATE} [${TEMPLATE_STORAGE}]"
 }
 
-function create_lxc() {
+create_lxc() {
   if pct status "$CTID" >/dev/null 2>&1; then
     if [[ "$FORCE_RECREATE" == "1" ]]; then
       msg_info "Removing Existing LXC ${CTID}"
@@ -256,8 +376,9 @@ function create_lxc() {
   fi
 
   msg_info "Creating LXC Container"
+
   run_cmd pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
-    --hostname "$HOSTNAME" \
+    --hostname "$CT_HOSTNAME" \
     --cores "$CORES" \
     --memory "$MEMORY" \
     --rootfs "${STORAGE}:${DISK}" \
@@ -265,6 +386,7 @@ function create_lxc() {
     --features nesting=1,keyctl=1 \
     --unprivileged "$UNPRIVILEGED" \
     --onboot 1
+
   msg_ok "LXC Container ${CTID} was successfully created"
 
   msg_info "Starting LXC Container"
@@ -272,20 +394,24 @@ function create_lxc() {
   msg_ok "Started LXC Container"
 }
 
-function wait_for_network() {
+wait_for_network() {
   msg_info "Checking Network in LXC"
+
   sleep 5
-  for i in {1..30}; do
+
+  for _ in {1..30}; do
     if pct exec "$CTID" -- ping -c1 -W1 deb.debian.org &>/dev/null; then
       msg_ok "Network in LXC is reachable (ping)"
       return
     fi
+
     sleep 2
   done
+
   die "Network in LXC is not reachable. Check bridge, DHCP, DNS, or VLAN"
 }
 
-function install_inside_lxc() {
+install_inside_lxc() {
   msg_info "Installing ${APP}"
 
   pct exec "$CTID" -- env \
@@ -304,18 +430,40 @@ VERSION_FILE="/opt/squeezelite-dante-bridge_version.txt"
 ALSA_PLUGIN_DIR="/usr/lib/x86_64-linux-gnu/alsa-lib"
 STATIME_BRANCH="inferno-dev"
 VERSION="1.0.0"
+
 ZONE_NAME="${ZONE_NAME:-SqueezelitePlayer}"
 SERVER_ADDRESS="${SERVER_ADDRESS:-}"
 SQUEEZELITE_MAC="${SQUEEZELITE_MAC:-}"
 VERBOSE="${VERBOSE:-0}"
 
-function lxc_msg() { echo "    $*"; }
-function lxc_die() { echo "ERROR: $*" >&2; exit 1; }
-function lxc_run() { if [[ "$VERBOSE" == "1" ]]; then "$@"; else "$@" &>/dev/null; fi; }
-function generate_random_mac() { printf '02:%02X:%02X:%02X:%02X:%02X
-' $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)); }
+lxc_msg() {
+  echo "    $*"
+}
+
+lxc_die() {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
+lxc_run() {
+  if [[ "$VERBOSE" == "1" ]]; then
+    "$@"
+  else
+    "$@" &>/dev/null
+  fi
+}
+
+generate_random_mac() {
+  printf '02:%02X:%02X:%02X:%02X:%02X\n' \
+    $((RANDOM % 256)) \
+    $((RANDOM % 256)) \
+    $((RANDOM % 256)) \
+    $((RANDOM % 256)) \
+    $((RANDOM % 256))
+}
 
 ZONE_NAME="${ZONE_NAME// /}"
+
 [[ -z "$ZONE_NAME" ]] && lxc_die "Zone name cannot be empty"
 [[ ! "$ZONE_NAME" =~ ^[A-Za-z0-9_-]+$ ]] && lxc_die "Invalid zone name"
 
@@ -324,6 +472,7 @@ if [[ -n "$SQUEEZELITE_MAC" && ! "$SQUEEZELITE_MAC" =~ ^([0-9A-Fa-f]{2}:){5}[0-9
 fi
 
 SERVICE_NAME="squeezelite-${ZONE_NAME,,}.service"
+
 SERVER_OPTION=""
 [[ -n "$SERVER_ADDRESS" ]] && SERVER_OPTION="-s $SERVER_ADDRESS"
 
@@ -338,21 +487,41 @@ if [[ -z "${SQUEEZELITE_MAC:-}" && -f "$INFO_FILE" ]]; then
 fi
 
 PLAYER_MAC="${SQUEEZELITE_MAC:-$(generate_random_mac)}"
+
 IFACE="$(ip -o -4 route show to default | awk '{print $5}' | head -n1)"
 [[ -z "$IFACE" ]] && lxc_die "Could not detect default network interface"
 
 lxc_msg "Installing dependencies"
 apt update
-lxc_run apt install -y git curl build-essential libasound2-dev pkg-config libavahi-client-dev libjack-jackd2-dev alsa-utils libcap2-bin squeezelite ca-certificates
+lxc_run apt install -y \
+  git \
+  curl \
+  build-essential \
+  libasound2-dev \
+  pkg-config \
+  libavahi-client-dev \
+  libjack-jackd2-dev \
+  alsa-utils \
+  libcap2-bin \
+  squeezelite \
+  ca-certificates
 
 lxc_msg "Installing Rust"
 if ! command -v cargo &>/dev/null; then
   curl https://sh.rustup.rs -sSf | sh -s -- -y
 fi
-[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+if [[ -f "$HOME/.cargo/env" ]]; then
+  # shellcheck disable=SC1090
+  source "$HOME/.cargo/env"
+fi
+
 command -v cargo &>/dev/null || lxc_die "cargo was not found"
 command -v rustup &>/dev/null || lxc_die "rustup was not found"
-rustup show active-toolchain &>/dev/null || lxc_run rustup default stable
+
+if ! rustup show active-toolchain &>/dev/null; then
+  lxc_run rustup default stable
+fi
 
 lxc_msg "Building Statime"
 if [[ ! -d /opt/statime ]]; then
@@ -361,15 +530,19 @@ else
   cd /opt/statime
   lxc_run git pull || true
 fi
+
 cd /opt/statime
 lxc_run cargo build --release
+
 [[ -x /opt/statime/target/release/statime ]] || lxc_die "Statime build failed"
 [[ -f /opt/statime/inferno-ptpv1.toml ]] || lxc_die "Missing inferno-ptpv1.toml"
+
 sed -i "s/^interface = .*$/interface = \"$IFACE\"/" /opt/statime/inferno-ptpv1.toml
 
 lxc_msg "Creating Statime service"
 systemctl stop chronyd.service systemd-timesyncd.service ntpd.service 2>/dev/null || true
 systemctl disable chronyd.service systemd-timesyncd.service ntpd.service 2>/dev/null || true
+
 cat >/etc/systemd/system/statime.service <<EOF
 [Unit]
 Description=Statime PTP clock for Inferno
@@ -394,9 +567,12 @@ else
   cd /opt/inferno
   lxc_run git pull || true
 fi
+
 cd /opt/inferno/alsa_pcm_inferno
 lxc_run cargo build --release
+
 mkdir -p "$ALSA_PLUGIN_DIR"
+
 if [[ -f /opt/inferno/target/release/libasound_module_pcm_inferno.so ]]; then
   cp /opt/inferno/target/release/libasound_module_pcm_inferno.so "$ALSA_PLUGIN_DIR/"
 elif [[ -f /opt/inferno/alsa_pcm_inferno/target/release/libasound_module_pcm_inferno.so ]]; then
@@ -406,7 +582,10 @@ else
 fi
 
 lxc_msg "Configuring ALSA"
-[[ -f /root/.asoundrc ]] && cp /root/.asoundrc "/root/.asoundrc.backup.$(date +%Y%m%d-%H%M%S)"
+if [[ -f /root/.asoundrc ]]; then
+  cp /root/.asoundrc "/root/.asoundrc.backup.$(date +%Y%m%d-%H%M%S)"
+fi
+
 cat >/root/.asoundrc <<EOF
 pcm.inferno {
     type inferno
@@ -423,11 +602,14 @@ EOF
 
 lxc_msg "Configuring Squeezelite"
 setcap 'cap_sys_nice=eip' /usr/bin/squeezelite || true
+
 cat >/etc/security/limits.d/audio.conf <<EOF
 @audio   -  rtprio     95
 @audio   -  memlock    unlimited
 EOF
+
 usermod -aG audio root
+
 cat >"/etc/systemd/system/$SERVICE_NAME" <<EOF
 [Unit]
 Description=Squeezelite Dante Player - $ZONE_NAME
@@ -438,15 +620,7 @@ Requires=statime.service
 [Service]
 Type=simple
 Environment=INFERNO_NAME=$ZONE_NAME
-ExecStart=/usr/bin/squeezelite \
-  -n $ZONE_NAME \
-  $SERVER_OPTION \
-  -o inferno \
-  -r 48000 \
-  -b 4096:1024 \
-  -u h:48000 \
-  -a 256:4::0 \
-  -m $PLAYER_MAC
+ExecStart=/usr/bin/squeezelite -n $ZONE_NAME $SERVER_OPTION -o inferno -r 48000 -b 4096:1024 -u h:48000 -a 256:4::0 -m $PLAYER_MAC
 Restart=always
 RestartSec=3
 User=root
@@ -478,6 +652,7 @@ systemctl enable --now statime.service
 systemctl enable --now "$SERVICE_NAME"
 
 mkdir -p "$APP_DIR"
+
 cat >"$CONFIG_FILE" <<EOF
 ZONE_NAME="$ZONE_NAME"
 SERVER_ADDRESS="$SERVER_ADDRESS"
@@ -541,19 +716,24 @@ header_info
 validate_host
 ask_default_or_advanced
 advanced_settings
+app_settings
 validate_settings
 
 header_info
 echo -e "${GEAR}  Using $([[ "$ADVANCED" == "1" ]] && echo "Advanced" || echo "Default") Settings on node $(hostname)"
-echo -e "${INFO} PVE Version $(pveversion 2>/dev/null | awk -F'/' '{print $2}' || echo unknown) (Kernel: $(uname -r))"
+echo -e "${INFO}  PVE Version $(pveversion 2>/dev/null | awk -F'/' '{print $2}' || echo unknown) (Kernel: $(uname -r))"
 echo -e "${ID_ICON}  Container ID: ${CTID}"
 echo -e "${OS_ICON}  Operating System: debian (12)"
 echo -e "${PKG_ICON}  Container Type: $([[ "$UNPRIVILEGED" == "1" ]] && echo "Unprivileged" || echo "Privileged")"
 echo -e "${DISK_ICON}  Disk Size: ${DISK} GB"
 echo -e "${CPU_ICON}  CPU Cores: ${CORES}"
 echo -e "${RAM_ICON}  RAM Size: ${MEMORY} MiB"
+echo -e "${INFO}  Zone Name: ${ZONE_NAME}"
+echo -e "${INFO}  Music Assistant/LMS Server: ${SERVER_ADDRESS:-auto-discovery}"
+echo -e "${INFO}  Squeezelite MAC: ${SQUEEZELITE_MAC:-random generated}"
 echo -e "${ROCKET}  Creating a ${APP} LXC using the above settings"
 echo ""
+
 read -rp "Continue? [Y/n]: " confirm
 confirm="${confirm:-Y}"
 [[ ! "$confirm" =~ ^[Yy]$ ]] && exit 0
@@ -567,12 +747,6 @@ IP="$(pct exec "$CTID" -- hostname -I 2>/dev/null | awk '{print $1}' || true)"
 
 msg_ok "Completed successfully!"
 echo -e "${ROCKET}  ${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO} ${YW}Dante transmitter should appear in Dante Controller as: ${ZONE_NAME}${CL}"
-echo -e "${INFO} ${YW}Add the Squeezelite player in Music Assistant and use WAV at 48 kHz.${CL}"
-echo -e "  ${NET_ICON}  Container IP: ${IP:-unknown}"
-echo ""
-echo "Useful commands:"
-echo "  pct enter ${CTID}"
-echo "  pct exec ${CTID} -- systemctl status statime.service"
-echo "  pct exec ${CTID} -- systemctl status squeezelite-${ZONE_NAME,,}.service"
-echo "  pct exec ${CTID} -- cat /etc/squeezelite-dante-bridge.conf"
+echo -e "${INFO}  ${YW}Dante transmitter should appear in Dante Controller as: ${ZONE_NAME}${CL}"
+echo -e "${INFO}  ${YW}Add the Squeezelite player in Music Assistant and use WAV at 48 kHz.${CL}"
+echo -e "${NET_ICON}  Container IP: ${IP:-unknown}"
