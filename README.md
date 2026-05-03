@@ -4,6 +4,17 @@ A working Debian-based setup for creating Dante audio transmitters from a Proxmo
 
 This project is intended for homelab and whole-home audio setups where you want software-based audio players to appear as Dante transmitters on the network.
 
+## ✨ Features
+
+- Software-based Dante transmitters (no hardware endpoints required)
+- Multi-room audio using Squeezelite
+- Works in Proxmox LXC, VM, or bare-metal Debian
+- Designed for Music Assistant / LMS
+- 48 kHz native pipeline (Dante-friendly)
+- One-command installer
+
+---
+
 ## What this does
 
 This setup creates one or more virtual audio zones, for example:
