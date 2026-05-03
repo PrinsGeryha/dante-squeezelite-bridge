@@ -70,7 +70,7 @@ header_info() {
             | |                                                                                               __/ |     
             |_|                                                                                              |___/      
             
-					Squeezelite Dante Bridge
+						Squeezelite Dante Bridge
 EOF
 }
 
@@ -663,21 +663,18 @@ WantedBy=multi-user.target
 EOF
 
 lxc_msg "Configuring console auto-login"
-if systemctl list-unit-files | grep -q '^container-getty@.service'; then
-  mkdir -p /etc/systemd/system/container-getty@1.service.d
-  cat >/etc/systemd/system/container-getty@1.service.d/override.conf <<EOF
+
+GETTY_OVERRIDE="/etc/systemd/system/container-getty@1.service.d/override.conf"
+mkdir -p "$(dirname "$GETTY_OVERRIDE")"
+
+cat <<EOF >"$GETTY_OVERRIDE"
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud pts/%I 115200,38400,9600 \$TERM
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud tty%I 115200,38400,9600 \$TERM
 EOF
-elif systemctl list-unit-files | grep -q '^getty@.service'; then
-  mkdir -p /etc/systemd/system/getty@tty1.service.d
-  cat >/etc/systemd/system/getty@tty1.service.d/override.conf <<EOF
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
-EOF
-fi
+
+systemctl daemon-reload
+systemctl restart container-getty@1.service 2>/dev/null || true
 
 lxc_msg "Enabling services"
 systemctl daemon-reload
