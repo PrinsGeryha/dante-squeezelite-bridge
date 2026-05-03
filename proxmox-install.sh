@@ -70,7 +70,7 @@ header_info() {
             | |                                                                                               __/ |     
             |_|                                                                                              |___/      
             
-											Squeezelite Dante Bridge
+					Squeezelite Dante Bridge
 EOF
 }
 
