@@ -10,7 +10,7 @@ set -Eeuo pipefail
 APP="Squeezelite-Dante-Bridge"
 VERSION="1.0.0"
 
-DEFAULT_CTID="150"
+DEFAULT_CTID=""
 DEFAULT_HOSTNAME="squeezelite-dante"
 DEFAULT_ZONE="SqueezelitePlayer"
 DEFAULT_STORAGE="local-lvm"
@@ -22,7 +22,7 @@ DEFAULT_DISK="8"
 DEFAULT_TEMPLATE="debian-12-standard_12.7-1_amd64.tar.zst"
 DEFAULT_UNPRIVILEGED="0"
 
-CTID="$DEFAULT_CTID"
+CTID="${CTID:-$DEFAULT_CTID}"
 CT_HOSTNAME="$DEFAULT_HOSTNAME"
 ZONE_NAME="$DEFAULT_ZONE"
 SERVER_ADDRESS=""
@@ -69,11 +69,8 @@ header_info() {
  |_____/ \__, |\__,_|\___|\___/___\___|_|_|\__\___|      \__,_|\__,_|_| |_|\__\___|      |_.__/|_|  |_|\__,_|\__, |\___|
             | |                                                                                               __/ |     
             |_|                                                                                              |___/      
-
-                Squeezelite Dante Bridge
-
-
-
+            
+        Squeezelite Dante Bridge
 EOF
 }
 
@@ -113,7 +110,7 @@ Usage:
   bash proxmox-install.sh --ctid 151 --hostname kitchen --zone Kitchen
 
 Options:
-  --ctid ID                 Container ID. Default: $DEFAULT_CTID
+  --ctid ID                 Container ID. Default: next available ID
   --hostname NAME           LXC hostname. Default: $DEFAULT_HOSTNAME
   --zone NAME               Dante/Squeezelite/Music Assistant player name. Default: $DEFAULT_ZONE
   --server ADDRESS          Music Assistant/LMS server IP or hostname. Blank/default = auto-discovery
@@ -213,6 +210,14 @@ sanitize_name() {
   local value="$1"
   value="${value// /}"
   echo "$value"
+}
+
+get_next_ctid() {
+  if command -v pvesh >/dev/null 2>&1; then
+    pvesh get /cluster/nextid
+  else
+    echo "150"
+  fi
 }
 
 ask_default_or_advanced() {
@@ -355,6 +360,7 @@ validate_host() {
   [[ $EUID -ne 0 ]] && die "Run this script as root on the Proxmox host"
   command -v pct >/dev/null 2>&1 || die "pct was not found. This must run on a Proxmox host"
   command -v pveam >/dev/null 2>&1 || die "pveam was not found. This must run on a Proxmox host"
+  command -v pvesh >/dev/null 2>&1 || die "pvesh was not found. This must run on a Proxmox host"
 }
 
 download_template() {
@@ -719,6 +725,11 @@ LXC_INSTALL
 
 header_info
 validate_host
+
+if [[ -z "$CTID" ]]; then
+  CTID="$(get_next_ctid)"
+fi
+
 ask_default_or_advanced
 advanced_settings
 app_settings
