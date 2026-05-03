@@ -1,6 +1,6 @@
 # Squeezelite Dante Bridge
 
-Create software-based Dante transmitters from Squeezelite players on Debian/Proxmox using [`inferno`](https://github.com/teodly/inferno), [`statime`](https://github.com/pendulum-project/statime), and [`squeezelite`](https://github.com/ralph-irving/squeezelite).
+Software-based Dante transmitters from Squeezelite players on Debian/Proxmox using [`inferno`](https://github.com/teodly/inferno), [`statime`](https://github.com/pendulum-project/statime), and [`squeezelite`](https://github.com/ralph-irving/squeezelite).
 
 This project is intended for homelab and whole-home audio setups where you want software-based audio players to appear as Dante transmitters on the network, without needing a dedicated hardware Dante endpoint for every zone.
 
