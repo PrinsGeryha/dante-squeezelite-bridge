@@ -62,7 +62,8 @@ The result is a Squeezelite player that appears as a Dante transmitter on your n
 
 Example image from Dante controller:
 
-<img width="1892" height="810" alt="image" src="https://github.com/user-attachments/assets/2ac8109e-153a-44c2-a8a2-eb5bbfe72702" />
+<img width="1892" height="810" alt="Untitled" src="https://github.com/user-attachments/assets/e0bc50b0-79d8-420c-a9d8-dc4d4bbddf25" />
+
 
 ---
 
