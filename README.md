@@ -60,6 +60,12 @@ This setup creates a Debian LXC container on Proxmox and installs:
 
 The result is a Squeezelite player that appears as a Dante transmitter on your network.
 
+Example image from Dante controller:
+
+<img width="1892" height="810" alt="image" src="https://github.com/user-attachments/assets/2ac8109e-153a-44c2-a8a2-eb5bbfe72702" />
+
+---
+
 Example zones:
 
 - `Bathroom`
