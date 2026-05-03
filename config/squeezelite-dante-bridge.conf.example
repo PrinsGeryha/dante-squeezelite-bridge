@@ -1,0 +1,30 @@
+# Squeezelite Dante Bridge configuration
+# This file is written automatically by the installer to:
+# /etc/squeezelite-dante-bridge.conf
+
+# Dante transmitter name, Squeezelite player name, and Music Assistant player name.
+# Use letters, numbers, dash, or underscore. Avoid spaces.
+ZONE_NAME="SqueezelitePlayer"
+
+# Optional Music Assistant / LMS server IP or hostname.
+# Leave empty to use Squeezelite auto-discovery.
+SERVER_ADDRESS=""
+
+# Fixed Squeezelite MAC address.
+# Leave empty to generate a random locally administered MAC address.
+# Use a fixed MAC if you want the player identity to survive reinstall/rebuild.
+SQUEEZELITE_MAC=""
+
+# Generated service name.
+# Normally this is derived from ZONE_NAME and does not need manual editing.
+SERVICE_NAME="squeezelite-squeezeliteplayer.service"
+
+# Dante-friendly sample rate.
+SAMPLE_RATE="48000"
+
+# Recommended output format in Music Assistant.
+AUDIO_FORMAT="WAV"
+
+# Console auto-login inside the LXC.
+# This only affects the Proxmox LXC console, not SSH.
+CONSOLE_AUTO_LOGIN="true"
