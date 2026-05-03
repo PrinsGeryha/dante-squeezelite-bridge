@@ -11,7 +11,7 @@ APP="Squeezelite-Dante-Bridge"
 VERSION="1.0.0"
 
 DEFAULT_CTID=""
-DEFAULT_HOSTNAME="squeezelite-dante"
+DEFAULT_HOSTNAME=""
 DEFAULT_ZONE="SqueezelitePlayer"
 DEFAULT_STORAGE="local-lvm"
 DEFAULT_TEMPLATE_STORAGE="local"
@@ -23,7 +23,7 @@ DEFAULT_TEMPLATE="debian-12-standard_12.7-1_amd64.tar.zst"
 DEFAULT_UNPRIVILEGED="0"
 
 CTID="${CTID:-$DEFAULT_CTID}"
-CT_HOSTNAME="$DEFAULT_HOSTNAME"
+CT_HOSTNAME="${CT_HOSTNAME:-$DEFAULT_HOSTNAME}"
 ZONE_NAME="$DEFAULT_ZONE"
 SERVER_ADDRESS=""
 SQUEEZELITE_MAC=""
@@ -70,7 +70,7 @@ header_info() {
             | |                                                                                               __/ |     
             |_|                                                                                              |___/      
             
-        Squeezelite Dante Bridge
+											Squeezelite Dante Bridge
 EOF
 }
 
@@ -107,11 +107,11 @@ Usage:
   bash proxmox-install.sh
   bash proxmox-install.sh --advanced
   bash proxmox-install.sh --verbose
-  bash proxmox-install.sh --ctid 151 --hostname kitchen --zone Kitchen
+  bash proxmox-install.sh --ctid 151 --zone Kitchen
 
 Options:
   --ctid ID                 Container ID. Default: next available ID
-  --hostname NAME           LXC hostname. Default: $DEFAULT_HOSTNAME
+  --hostname NAME           LXC hostname. Default: squeezelite-dante-<zone>
   --zone NAME               Dante/Squeezelite/Music Assistant player name. Default: $DEFAULT_ZONE
   --server ADDRESS          Music Assistant/LMS server IP or hostname. Blank/default = auto-discovery
   --mac MAC                 Fixed Squeezelite MAC. Blank/default = random generated
@@ -212,6 +212,20 @@ sanitize_name() {
   echo "$value"
 }
 
+generate_hostname_from_zone() {
+  local zone="$1"
+
+  zone="$(echo "$zone" | tr '[:upper:]' '[:lower:]')"
+  zone="$(echo "$zone" | sed 's/[^a-z0-9-]/-/g')"
+  zone="$(echo "$zone" | sed 's/--*/-/g; s/^-//; s/-$//')"
+
+  if [[ -z "$zone" ]]; then
+    zone="squeezeliteplayer"
+  fi
+
+  echo "squeezelite-dante-${zone}"
+}
+
 get_next_ctid() {
   if command -v pvesh >/dev/null 2>&1; then
     pvesh get /cluster/nextid
@@ -265,7 +279,7 @@ advanced_settings() {
   read -rp "Container ID [${CTID}]: " input
   CTID="${input:-$CTID}"
 
-  read -rp "Hostname [${CT_HOSTNAME}]: " input
+  read -rp "Hostname [auto: squeezelite-dante-<zone>]: " input
   CT_HOSTNAME="${input:-$CT_HOSTNAME}"
 
   read -rp "Zone name [${ZONE_NAME}]: " input
@@ -338,8 +352,13 @@ app_settings() {
 
 validate_settings() {
   CTID="$(sanitize_name "$CTID")"
-  CT_HOSTNAME="$(sanitize_name "$CT_HOSTNAME")"
   ZONE_NAME="$(sanitize_name "$ZONE_NAME")"
+
+  if [[ -z "$CT_HOSTNAME" ]]; then
+    CT_HOSTNAME="$(generate_hostname_from_zone "$ZONE_NAME")"
+  else
+    CT_HOSTNAME="$(sanitize_name "$CT_HOSTNAME")"
+  fi
 
   [[ -z "$CTID" ]] && die "Container ID cannot be empty"
   [[ -z "$CT_HOSTNAME" ]] && die "Hostname cannot be empty"
@@ -350,6 +369,7 @@ validate_settings() {
   [[ ! "$MEMORY" =~ ^[0-9]+$ ]] && die "Memory must be numeric"
   [[ ! "$DISK" =~ ^[0-9]+$ ]] && die "Disk size must be numeric"
   [[ ! "$ZONE_NAME" =~ ^[A-Za-z0-9_-]+$ ]] && die "Zone name can only contain letters, numbers, dash and underscore"
+  [[ ! "$CT_HOSTNAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$ ]] && die "Hostname contains invalid characters"
 
   if [[ -n "$SQUEEZELITE_MAC" && ! "$SQUEEZELITE_MAC" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]; then
     die "Invalid MAC format. Example: 00:11:22:33:44:b1"
@@ -424,6 +444,8 @@ wait_for_network() {
 
 install_inside_lxc() {
   msg_info "Installing ${APP}"
+  echo -e "${INFO}  ${YW}This can take a long time. Statime and Inferno are built from source inside the LXC.${CL}"
+  echo -e "${INFO}  ${YW}On slower systems, the build step may take several minutes.${CL}"
 
   pct exec "$CTID" -- env \
     ZONE_NAME="$ZONE_NAME" \
@@ -744,6 +766,7 @@ echo -e "${PKG_ICON}  Container Type: $([[ "$UNPRIVILEGED" == "1" ]] && echo "Un
 echo -e "${DISK_ICON}  Disk Size: ${DISK} GB"
 echo -e "${CPU_ICON}  CPU Cores: ${CORES}"
 echo -e "${RAM_ICON}  RAM Size: ${MEMORY} MiB"
+echo -e "${INFO}  Hostname: ${CT_HOSTNAME}"
 echo -e "${INFO}  Zone Name: ${ZONE_NAME}"
 echo -e "${INFO}  Music Assistant/LMS Server: ${SERVER_ADDRESS:-auto-discovery}"
 echo -e "${INFO}  Squeezelite MAC: ${SQUEEZELITE_MAC:-random generated}"
