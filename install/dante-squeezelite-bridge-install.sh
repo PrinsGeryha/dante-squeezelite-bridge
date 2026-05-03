@@ -44,7 +44,9 @@ if ! command -v cargo &>/dev/null; then
   curl https://sh.rustup.rs -sSf | sh -s -- -y
 fi
 
-source "$HOME/.cargo/env"
+if [[ -f "$HOME/.cargo/env" ]]; then
+  source "$HOME/.cargo/env"
+fi
 
 if ! rustup show active-toolchain &>/dev/null; then
   $STD rustup default stable
