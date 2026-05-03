@@ -4,12 +4,37 @@ Software-based Dante transmitters from Squeezelite players on Debian/Proxmox usi
 
 This project is intended for homelab and whole-home audio setups where you want software-based audio players to appear as Dante transmitters on the network, without needing a dedicated hardware Dante endpoint for every zone.
 
+---
+
+## ⚠️ Safety notice
+
+Never run scripts from the internet without reviewing them first.
+
+Before running the installer, inspect the script and make sure you understand what it does. This installer creates and configures an LXC container on your Proxmox host, installs packages, builds software from source, creates systemd services, and enables those services.
+
+Review the script first:
+
+```bash
+wget -qLO proxmox-install.sh https://raw.githubusercontent.com/marcusisdahl/squeezelite-dante-bridge/main/proxmox-install.sh
+nano proxmox-install.sh
+```
+
+Then run it only if you are comfortable with the contents:
+
+```bash
+bash proxmox-install.sh
+```
+
+---
+
 ## ✨ Features
 
 - Software-based Dante transmitter using Inferno
 - Squeezelite player per audio zone
 - Proxmox LXC installer with a Proxmox Helper Scripts inspired interface
 - Debian 12 based setup
+- Automatic next available Proxmox CTID
+- Automatic LXC hostname based on zone name
 - Statime PTP clock service
 - ALSA Inferno output device
 - Music Assistant / LMS compatible
@@ -17,7 +42,9 @@ This project is intended for homelab and whole-home audio setups where you want 
 - Optional fixed Music Assistant/LMS server address
 - Optional fixed Squeezelite MAC address
 - Persistent configuration file
+- Console auto-login inside the LXC
 - Health checks after installation
+- Verbose install option for troubleshooting
 
 ---
 
@@ -46,6 +73,15 @@ The zone name is used for:
 - Squeezelite player name
 - Music Assistant player name
 - systemd service name
+- LXC hostname
+
+Example:
+
+```text
+Zone name: Kitchen
+LXC hostname: squeezelite-dante-kitchen
+Service: squeezelite-kitchen.service
+```
 
 Example flow:
 
@@ -61,25 +97,6 @@ Inferno Dante transmitter
 Dante Controller routing
         ↓
 DSP / amplifier / speaker zone
-```
-
-## ⚠️ Safety notice
-
-Never run scripts from the internet without reviewing them first.
-
-Before running the installer, inspect the script and make sure you understand what it does. This installer creates and configures an LXC container on your Proxmox host, installs packages, builds software from source, creates systemd services, and enables those services.
-
-Review the script first:
-
-```bash
-wget -qLO proxmox-install.sh https://raw.githubusercontent.com/marcusisdahl/squeezelite-dante-bridge/main/proxmox-install.sh
-nano proxmox-install.sh
-```
-
-Then run it only if you are comfortable with the contents:
-
-```bash
-bash proxmox-install.sh
 ```
 
 ---
@@ -104,7 +121,15 @@ Verbose mode:
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/marcusisdahl/squeezelite-dante-bridge/main/proxmox-install.sh)" -- --verbose
 ```
 
----
+## 🐧 Manual Debian install
+
+For an existing Debian LXC/VM, use:
+
+```bash
+wget https://raw.githubusercontent.com/marcusisdahl/squeezelite-dante-bridge/main/install.sh
+chmod +x install.sh
+sudo ./install.sh
+```
 
 ## ⚙️ Installation options
 
@@ -121,6 +146,8 @@ RAM: 1024 MiB
 Storage: local-lvm
 Template Storage: local
 Network Bridge: vmbr0
+CTID: next available ID
+Hostname: squeezelite-dante-<zone>
 ```
 
 During installation, the script asks for the important application settings:
@@ -139,6 +166,21 @@ Use a fixed MAC address if you want the Music Assistant/Squeezelite player ident
 
 ---
 
+## ⏳ Installation time
+
+The installation can take a while.
+
+Statime and Inferno are built from source inside the LXC container. On slower Proxmox hosts, this step may take several minutes.
+
+The installer will show this message before the long build step:
+
+```text
+This can take a long time. Statime and Inferno are built from source inside the LXC.
+On slower systems, the build step may take several minutes.
+```
+
+---
+
 ## 🛠️ Advanced install
 
 Run advanced mode if you want to change CTID, hostname, storage, bridge, memory, CPU, disk size, or container type:
@@ -152,7 +194,6 @@ You can also pass options directly:
 ```bash
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/marcusisdahl/squeezelite-dante-bridge/main/proxmox-install.sh)" -- \
   --ctid 151 \
-  --hostname dante-kitchen \
   --zone Kitchen \
   --server 10.10.4.30 \
   --mac 02:11:22:33:44:55
@@ -161,21 +202,21 @@ bash -c "$(wget -qLO - https://raw.githubusercontent.com/marcusisdahl/squeezelit
 Common options:
 
 ```text
---ctid ID              Container ID
---hostname NAME        LXC hostname
---zone NAME            Dante/Squeezelite/Music Assistant player name
---server ADDRESS       Music Assistant/LMS server IP or hostname
---mac MAC              Fixed Squeezelite MAC address
---storage NAME         Container storage
---template-storage NAME Template storage
---bridge NAME          Network bridge
---memory MB            RAM in MiB
---cores N              CPU cores
---disk GB              Disk size in GB
---unprivileged         Create unprivileged LXC
---force-recreate       Destroy existing CTID before creating
---advanced             Ask for all settings interactively
---verbose              Show full command output
+--ctid ID                  Container ID. Default: next available ID
+--hostname NAME            LXC hostname. Default: squeezelite-dante-<zone>
+--zone NAME                Dante/Squeezelite/Music Assistant player name
+--server ADDRESS           Music Assistant/LMS server IP or hostname
+--mac MAC                  Fixed Squeezelite MAC address
+--storage NAME             Container storage
+--template-storage NAME    Template storage
+--bridge NAME              Network bridge
+--memory MB                RAM in MiB
+--cores N                  CPU cores
+--disk GB                  Disk size in GB
+--unprivileged             Create unprivileged LXC
+--force-recreate           Destroy existing CTID before creating
+--advanced                 Ask for all settings interactively
+--verbose                  Show full command output
 ```
 
 ---
@@ -229,38 +270,9 @@ Tested with:
 
 ---
 
-## 📁 Repository layout
+## ⚙️ Configuration location
 
-Recommended repository structure:
-
-```text
-squeezelite-dante-bridge/
-├── README.md
-├── LICENSE
-├── proxmox-install.sh
-├── install.sh
-├── config/
-│   ├── asoundrc.example
-│   └── squeezelite-dante-bridge.conf.example
-└── services/
-    └── squeezelite.service.example
-```
-
-### File overview
-
-| File | Purpose |
-|---|---|
-| `proxmox-install.sh` | Main installer. Run this on the Proxmox host. |
-| `install.sh` | Manual installer for an existing Debian LXC/VM. |
-| `config/asoundrc.example` | Example ALSA Inferno configuration. |
-| `config/squeezelite-dante-bridge.conf.example` | Example persistent configuration file. |
-| `services/squeezelite.service.example` | Example Squeezelite systemd service. |
-
----
-
-## ⚙️ Configuration
-
-The installer writes persistent configuration to:
+The main configuration file is stored inside the LXC container at:
 
 ```text
 /etc/squeezelite-dante-bridge.conf
@@ -278,16 +290,29 @@ AUDIO_FORMAT="WAV"
 CONSOLE_AUTO_LOGIN="true"
 ```
 
+Installation information is stored at:
+
+```text
+/opt/squeezelite-dante-bridge/info.txt
+```
+
+From the Proxmox host, you can check the configuration with:
+
+```bash
+pct exec <CTID> -- cat /etc/squeezelite-dante-bridge.conf
+pct exec <CTID> -- cat /opt/squeezelite-dante-bridge/info.txt
+```
+
+Example:
+
+```bash
+pct exec 151 -- cat /etc/squeezelite-dante-bridge.conf
+```
+
 A template is available at:
 
 ```text
 config/squeezelite-dante-bridge.conf.example
-```
-
-Installation information is written to:
-
-```text
-/opt/squeezelite-dante-bridge/info.txt
 ```
 
 ---
@@ -401,15 +426,20 @@ Example install commands:
 ```bash
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/marcusisdahl/squeezelite-dante-bridge/main/proxmox-install.sh)" -- \
   --ctid 151 \
-  --hostname dante-kitchen \
   --zone Kitchen
 ```
 
 ```bash
 bash -c "$(wget -qLO - https://raw.githubusercontent.com/marcusisdahl/squeezelite-dante-bridge/main/proxmox-install.sh)" -- \
   --ctid 152 \
-  --hostname dante-bathroom \
   --zone Bathroom
+```
+
+The hostname will automatically be generated from the zone name:
+
+```text
+Kitchen  → squeezelite-dante-kitchen
+Bathroom → squeezelite-dante-bathroom
 ```
 
 ---
@@ -528,22 +558,6 @@ cat /etc/squeezelite-dante-bridge.conf
 cat /root/.asoundrc
 cat /etc/systemd/system/squeezelite-*.service
 ```
-
----
-
-## 🐧 Manual Debian install
-
-For an existing Debian LXC/VM, use:
-
-```bash
-wget https://raw.githubusercontent.com/marcusisdahl/squeezelite-dante-bridge/main/install.sh
-chmod +x install.sh
-sudo ./install.sh
-```
-
-The Proxmox installer is recommended for new deployments.
-
----
 
 ## 📝 Notes
 
